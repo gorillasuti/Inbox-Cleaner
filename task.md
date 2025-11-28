@@ -1,0 +1,137 @@
+# Inbox Cleaner - Task Checklist
+
+- [x] **Phase 1: Project Scaffolding & Manifest**
+    - [x] Initialize Vite + React project (Manual Setup) <!-- id: 0 -->
+    - [x] Install and configure Tailwind CSS (Manual Setup) <!-- id: 1 -->
+    - [x] Create `manifest.json` (Manifest V3) <!-- id: 2 -->
+    - [x] Configure Vite for extension build (CRX or manual build config) <!-- id: 3 -->
+- [x] **Phase 2: UI Implementation**
+    - [x] Create Content Script entry point (`src/content.jsx`) <!-- id: 4 -->
+    - [x] Implement Shadow DOM injection <!-- id: 5 -->
+    - [x] Build Dashboard UI components (Header, Stats, List, Actions) <!-- id: 6 -->
+    - [x] Add toggle functionality via extension icon <!-- id: 7 -->
+- [x] **Phase 3: Scanning Logic**
+    - [x] Implement `src/utils/scanner.js` for DOM scanning <!-- id: 8 -->
+    - [x] Implement Mock Mode for testing <!-- id: 9 -->
+    - [x] Integrate scanner with UI <!-- id: 10 -->
+- [x] **Phase 4: Action Logic**
+    - [x] Implement "Select All" and "Mass Unsubscribe" logic <!-- id: 11 -->
+    - [x] Implement unsubscribe action (background tab/highlight) <!-- id: 12 -->
+- [ ] **Phase 5: UI/UX Overhaul**
+    - [x] Move Dashboard to Top-Right <!-- id: 15 -->
+    - [x] Implement Dark/Light Mode Toggle <!-- id: 16 -->
+    - [x] Add Tooltips (Tippy.js) for Clutter Score & Info <!-- id: 17 -->
+    - [x] Modernize UI (Slick theme, better colors) <!-- id: 18 -->
+    - [x] Prepare UI for Paywall (Pro badges/sections) <!-- id: 19 -->
+- [x] **Phase 6: Polish & Monetization**
+    - [x] Make Window Draggable (`react-draggable`) <!-- id: 20 -->
+    - [x] Fix Tippy.js (Shadow DOM support) <!-- id: 21 -->
+    - [x] Deep Scan (100 pages) & Monetization Gates <!-- id: 22 -->
+- [ ] **Phase 8: Auth & Advanced UI**
+    - [ ] Mock Auth System (Login/Register/Premium) <!-- id: 27 -->
+    - [ ] Profile & Settings Menu (Providers, Subscription) <!-- id: 28 -->
+    - [ ] "TunnelBear" Style Scan Animation <!-- id: 29 -->
+    - [ ] Premium Logic Updates (Quick Scan unblur) <!-- id: 30 -->
+- [ ] **Phase 9: Polish, i18n, & Notifications**
+    - [ ] Localization System (5 languages) <!-- id: 31 -->
+    - [ ] Replace Alerts with Toasts <!-- id: 32 -->
+    - [ ] Shadcn-style UI Polish (Auth/Settings) <!-- id: 33 -->
+    - [ ] Enhanced Premium Animation <!-- id: 34 -->
+    - [ ] Manage Subscription Mock <!-- id: 35 -->
+- [x] **Phase 10: UI Fixes & Feature Enhancements**
+    - [x] Fix Login/Register Overflow & Scaling <!-- id: 36 -->
+    - [x] Fix Profile Icon & Button Hover States <!-- id: 37 -->
+    - [x] Refine Premium Animation <!-- id: 38 -->
+    - [x] Manage Subscription UI <!-- id: 39 -->
+    - [x] Language Dropdown with Flags <!-- id: 40 -->
+- [x] **Phase 11: UI Fixes & Google Auth**
+    - [x] Fix "Found Senders" Toast & Unsubscribe UI <!-- id: 41 -->
+    - [x] Fix Auth View Light Mode <!-- id: 42 -->
+    - [x] Add Google Login Button <!-- id: 43 -->
+    - [x] Widen Upgrade Buttons <!-- id: 44 -->
+    - [x] Refine Premium Animation (Tasteful Pulse) <!-- id: 45 -->
+- [x] **Phase 12: UI Refinements & Persistence**
+    - [x] Fix Toast Styling & Remove "Found Senders" <!-- id: 46 -->
+    - [x] Persist Dark Mode <!-- id: 47 -->
+    - [x] Profile Menu Click-Outside <!-- id: 48 -->
+    - [x] Static Trash Icon in Premium Animation <!-- id: 49 -->
+- [x] **Phase 13: Freemium Scanner Engine**
+    - [x] Create Adapter Types & Gatekeeper <!-- id: 50 -->
+    - [x] Implement Gmail Adapter <!-- id: 51 -->
+    - [x] Implement Outlook/Yahoo Adapters (Skeleton) <!-- id: 52 -->
+    - [x] Refactor Scanner to use Adapters & Gatekeeper <!-- id: 53 -->
+    - [x] Update App.jsx for Freemium UI & Limits <!-- id: 54 -->
+- [x] **Phase 14: Fixes & Enhancements**
+    - [x] Fix Outlook Injection (Manifest) <!-- id: 55 -->
+    - [x] Restore Quick Scan Visual Gating <!-- id: 56 -->
+    - [x] Improve Scan Quality (Selectors) <!-- id: 57 -->
+    - [x] Implement Auth Redirect Flow <!-- id: 58 -->
+    - [x] Fix Z-Index & Height Bugs <!-- id: 59 -->
+    - [x] Implement Load More & Provider Toggles <!-- id: 60 -->
+    - [x] Fix Pro Error (Auth Persistence) <!-- id: 61 -->
+- [x] **Phase 15: Supabase & Outlook**
+    - [x] Fix App Height (Dynamic) <!-- id: 62 -->
+    - [x] Implement Outlook Adapter Selectors <!-- id: 63 -->
+    - [x] Install & Setup Supabase Client <!-- id: 64 -->
+    - [x] Integrate Supabase Auth in Context <!-- id: 65 -->
+- [x] **Phase 16: Supabase Configuration & CSP**
+    - [x] Create Supabase Setup Guide <!-- id: 66 -->
+    - [x] Implement Chrome Storage Adapter <!-- id: 67 -->
+    - [x] Move Supabase Auth to Background Script (CSP Fix) <!-- id: 68 -->
+    - [x] Update Manifest Host Permissions <!-- id: 69 -->
+- [x] **Phase 17: Build & Deployment**
+    - [x] Fix `_commonjsHelpers.js` Root Error (Vite Config) <!-- id: 70 -->
+- [x] **Phase 18: Documentation**
+    - [x] Create Detailed Setup Guide (Stripe, Google Cloud, Supabase) <!-- id: 71 -->
+- [x] **Phase 19: Debugging**
+    - [x] Add Debug Logs to Content & Background Scripts <!-- id: 72 -->
+- [x] **Phase 20: Gmail API Integration**
+    - [x] Update Setup Guide for Gmail Scopes <!-- id: 73 -->
+    - [x] Implement Google OAuth in Background Script <!-- id: 74 -->
+    - [x] Create GmailService Utility <!-- id: 75 -->
+    - [x] Wire up Google Login in UI <!-- id: 76 -->
+- [x] **Phase 21: Bug Fixes**
+    - [x] Fix Service Worker Registration (ESM Type) <!-- id: 77 -->
+- [x] **Phase 22: Content Script Loading**
+    - [x] Implement Dynamic Import Loader (`content-loader.js`) <!-- id: 78 -->
+    - [x] Update Manifest for Web Accessible Resources <!-- id: 79 -->
+- [x] **Phase 23: UI & Auth Fixes**
+    - [x] Fix AuthView Height (Relative Positioning) <!-- id: 80 -->
+    - [x] Add Debug Logs for Auth Storage <!-- id: 81 -->
+    - [x] Clarify Unlock Limit Logic <!-- id: 82 -->
+- [x] **Phase 24: Auth UI Enhancements**
+    - [x] Conditionally Render Dashboard (Hide when Auth Open) <!-- id: 83 -->
+    - [x] Add Password Confirmation & Validation <!-- id: 84 -->
+    - [x] Add Error Handling in UI <!-- id: 85 -->
+- [x] **Phase 25: Persistence & Layout Fixes**
+    - [x] Immediate Auth State Update (Fix Persistence) <!-- id: 86 -->
+    - [x] Refactor All Views to Conditional Rendering (Fix Height) <!-- id: 87 -->
+    - [x] Restore Premium Button Styles <!-- id: 88 -->
+- [x] **Phase 26: Critical Fixes**
+    - [x] Remove Fixed Min-Heights (Dynamic Sizing) <!-- id: 89 -->
+    - [x] Verify Manifest & Content Loader <!-- id: 90 -->
+- [x] **Phase 27: Auth Configuration**
+    - [x] Update Supabase Config with Placeholders <!-- id: 91 -->
+    - [x] Make AuthContext Dynamic (Remove Hardcoded Project ID) <!-- id: 92 -->
+    - [x] Update Setup Guide with Explicit Instructions <!-- id: 93 -->
+- [x] **Phase 28: OAuth Debugging**
+    - [x] Add Detailed Logs to Background Script <!-- id: 94 -->
+- [x] **Phase 29: Manifest Updates**
+    - [x] Generalize Host Permissions (`*.supabase.co`) <!-- id: 95 -->
+- [x] **Phase 30: Final Configuration**
+    - [x] **CRITICAL**: Whitelist `https://bilkcdjfecknefbmmfcfcodhejkfjihi.chromiumapp.org/` in Google Cloud <!-- id: 96 -->
+    - [x] **CRITICAL**: Whitelist `https://bilkcdjfecknefbmmfcfcodhejkfjihi.chromiumapp.org/` in Supabase <!-- id: 97 -->
+- [ ] **Phase 31: Auth UI Enhancements**
+    - [ ] Password Requirements Visuals (8 chars, special, number) <!-- id: 98 -->
+    - [ ] Show/Hide Password Toggle <!-- id: 99 -->
+    - [ ] Ensure Instant UI Update on Google Login <!-- id: 100 -->
+- [ ] **Phase 32: UI/UX Bug Fixes**
+    - [ ] Fix Paywall Overflow (Full Scan empty state) <!-- id: 101 -->
+    - [ ] Fix Initial Height (Prevent growing animation) <!-- id: 102 -->
+    - [ ] Fix Full Scan Bypass (Prevent seeing hidden items when switching modes) <!-- id: 103 -->
+- [ ] **Phase 33: Subscription Experience**
+    - [ ] Welcome Screen with Confetti (Lottie/Canvas) <!-- id: 104 -->
+    - [ ] Goodbye Screen (Sad Face) <!-- id: 105 -->
+- [ ] **Verification**
+    - [ ] Verify build output (`dist` folder) (User to run build) <!-- id: 13 -->
+    - [ ] Manual test on Gmail <!-- id: 14 -->

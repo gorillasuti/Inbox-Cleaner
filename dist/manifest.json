@@ -1,0 +1,55 @@
+{
+    "manifest_version": 3,
+    "name": "Inbox Cleaner",
+    "version": "1.0",
+    "description": "Clean your Gmail inbox from newsletters and spam.",
+    "permissions": [
+        "activeTab",
+        "scripting",
+        "storage",
+        "tabs",
+        "identity"
+    ],
+    "optional_permissions": [],
+    "host_permissions": [
+        "*://mail.google.com/*",
+        "https://*.supabase.co/*",
+        "https://*.vercel.app/*",
+        "<all_urls>"
+    ],
+    "background": {
+        "service_worker": "background.js",
+        "type": "module"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "*://mail.google.com/*",
+                "*://outlook.live.com/*",
+                "*://mail.yahoo.com/*"
+            ],
+            "js": [
+                "content-loader.js"
+            ],
+            "run_at": "document_end"
+        }
+    ],
+    "action": {
+        "default_title": "Toggle Inbox Cleaner"
+    },
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "*.png",
+                "*.svg",
+                "content.js",
+                "chunks/*"
+            ],
+            "matches": [
+                "*://mail.google.com/*",
+                "*://outlook.live.com/*",
+                "*://mail.yahoo.com/*"
+            ]
+        }
+    ]
+}
