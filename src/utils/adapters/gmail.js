@@ -16,12 +16,14 @@ export const GmailAdapter = {
     async scan(token, maxPages = 1, onProgress = () => {}) {
         let pageToken = null;
         let totalScanned = 0;
-        let allMessages = [];
         
-        // Buckets
+        // Maps for grouping: Key = email (or name if email missing)
+        const cleanableMap = new Map();
+        const manualMap = new Map();
+
         const results = {
-            cleanable: [], // Has List-Unsubscribe
-            manual: [],    // Likely newsletter but no header
+            cleanable: [],
+            manual: [],
             meta: {
                 totalScanned: 0,
                 pagesScanned: 0
@@ -59,9 +61,9 @@ export const GmailAdapter = {
                 // 3. Process & Categorize
                 const processed = this.processMessages(batchData);
                 
-                // Merge into main results
-                results.cleanable.push(...processed.cleanable);
-                results.manual.push(...processed.manual);
+                // 4. Group Results
+                this.groupResults(processed.cleanable, cleanableMap);
+                this.groupResults(processed.manual, manualMap);
                 
                 totalScanned += messages.length;
                 results.meta.totalScanned = totalScanned;
@@ -76,12 +78,39 @@ export const GmailAdapter = {
                 pageToken = listData.nextPageToken;
                 if (!pageToken) break;
             }
+            
+            // Convert Maps to Arrays
+            results.cleanable = Array.from(cleanableMap.values()).sort((a, b) => b.count - a.count);
+            results.manual = Array.from(manualMap.values()).sort((a, b) => b.count - a.count);
+
         } catch (error) {
             console.error('[GmailAdapter] Scan failed:', error);
             throw error;
         }
 
         return results;
+    },
+
+    /**
+     * Helper to group items into a Map
+     */
+    groupResults(items, map) {
+        items.forEach(item => {
+            const key = item.email; // Group by email
+            
+            if (!map.has(key)) {
+                map.set(key, {
+                    senderName: item.senderName,
+                    email: item.email,
+                    count: 0,
+                    ids: []
+                });
+            }
+            
+            const group = map.get(key);
+            group.count++;
+            group.ids.push(item.id);
+        });
     },
 
     /**
@@ -119,23 +148,25 @@ export const GmailAdapter = {
         const cleanable = [];
         const manual = [];
 
+        // Robust header parser
+        const getHeader = (headers, name) => {
+            if (!headers) return null;
+            const header = headers.find(h => h.name.toLowerCase() === name.toLowerCase());
+            return header ? header.value : null;
+        };
+
         for (const msg of messages) {
-            if (!msg.payload || !msg.payload.headers) continue;
-
-            const headers = msg.payload.headers;
-            const getHeader = (name) => {
-                const h = headers.find(x => x.name.toLowerCase() === name.toLowerCase());
-                return h ? h.value : null;
-            };
-
-            const listUnsubscribe = getHeader('List-Unsubscribe');
-            const from = getHeader('From');
-            const subject = getHeader('Subject');
+            if (!msg.payload) continue;
             
-            // Basic extraction of name/email from "From" header
-            // Format: "Name <email@domain.com>" or "email@domain.com"
+            const headers = msg.payload.headers;
+            
+            const listUnsubscribe = getHeader(headers, 'List-Unsubscribe');
+            const from = getHeader(headers, 'From');
+            const subject = getHeader(headers, 'Subject');
+            
+            // Parse Sender
             let senderName = "Unknown";
-            let senderEmail = "unknown";
+            let senderEmail = "unknown@email.com";
             
             if (from) {
                 const match = from.match(/(.*)<(.+)>/);
@@ -144,7 +175,7 @@ export const GmailAdapter = {
                     senderEmail = match[2].trim();
                 } else {
                     senderEmail = from.trim();
-                    senderName = senderEmail.split('@')[0]; // Fallback
+                    senderName = senderEmail.split('@')[0];
                 }
             }
 
@@ -152,36 +183,21 @@ export const GmailAdapter = {
                 id: msg.id,
                 threadId: msg.threadId,
                 senderName,
-                senderEmail,
+                email: senderEmail, // Normalized key
                 subject,
-                listUnsubscribe,
-                internalDate: msg.internalDate
+                listUnsubscribe
             };
 
             // Logic Rule 1: Cleanable if List-Unsubscribe exists
             if (listUnsubscribe) {
                 cleanable.push(item);
             } 
-            // Logic Rule 2: Manual if no header but looks like newsletter
-            // (We already filtered by query, so most here are likely candidates)
-            // But we should filter out transactional stuff if possible.
-            // For now, if it was in the query results and has no unsub header, it's "Manual"
-            // UNLESS it looks strictly transactional (hard to tell without body).
-            // The prompt says: "Rule for 'Ignore': Transactional emails... that lack headers should be dropped"
-            // Since we can't easily detect transactional without body/advanced logic, 
-            // and our query `category:promotions` already does heavy lifting,
-            // we will assume the query was good enough, but maybe check subject keywords?
+            // Logic Rule 2: Manual if no header
             else {
-                // Simple keyword check to exclude obvious transactional
-                const lowerSub = (subject || '').toLowerCase();
-                const isTransactional = lowerSub.includes('order') || 
-                                      lowerSub.includes('receipt') || 
-                                      lowerSub.includes('shipped') || 
-                                      lowerSub.includes('delivery');
-                
-                if (!isTransactional) {
-                    manual.push(item);
-                }
+                // Filter out purely transactional stuff if possible
+                // For MVP, add ALL non-cleanable to manual
+                // But filter out known system notifications if needed (omitted for now as per instruction "add ALL non-cleanable to manual")
+                manual.push(item);
             }
         }
 
