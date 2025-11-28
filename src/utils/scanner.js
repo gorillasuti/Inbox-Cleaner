@@ -1,6 +1,5 @@
 import { checkAccess } from './gatekeeper';
 import { GmailAdapter } from './adapters/gmail';
-import { GmailApiAdapter } from './adapters/gmailApiAdapter';
 import { OutlookAdapter } from './adapters/outlook';
 import { getToken } from './oauth';
 import { groupItems } from './grouping';
@@ -32,19 +31,20 @@ export const scanInbox = async (maxPages = 1, mode = 'quick') => {
         const tokenData = await getToken('gmail');
         if (tokenData && tokenData.access_token) {
             console.log('[Scanner] Using Gmail API Adapter');
-            adapter = GmailApiAdapter;
+            adapter = GmailAdapter;
             useApi = true;
             token = tokenData.access_token;
         } else {
-            console.log('[Scanner] Using Gmail DOM Adapter');
-            adapter = GmailAdapter;
+            console.log('[Scanner] Gmail DOM Adapter is deprecated. Please sign in with Google.');
+            return { error: "AUTH_REQUIRED", provider: "gmail", results: [] };
         }
     } else if (providerHost.includes('outlook') || providerHost.includes('live')) {
         adapter = OutlookAdapter;
     } else if (providerHost.includes('yahoo')) {
         adapter = OutlookAdapter;
     } else {
-        adapter = GmailAdapter;
+        // Fallback or unknown
+        return { error: "UNKNOWN_PROVIDER", results: [] };
     }
 
     let allFindings = [];
@@ -53,92 +53,62 @@ export const scanInbox = async (maxPages = 1, mode = 'quick') => {
     if (useApi) {
         // API Scan Strategy
         try {
-            allFindings = await adapter.scan(token, accessConfig.canDeepScan ? maxPages : 1);
-            totalFound = allFindings.length;
+            const scanResults = await adapter.scan(token, accessConfig.canDeepScan ? maxPages : 1);
+            
+            return {
+                results: [], // Deprecated flat list
+                data: scanResults, // New structured data
+                totalFound: scanResults.meta.totalScanned,
+                unlockLimit: accessConfig.unlockLimit,
+                isLimited: !accessConfig.isPremium && scanResults.meta.totalScanned > accessConfig.unlockLimit,
+                estimatedHidden: 0
+            };
+
         } catch (error) {
             console.error('[Scanner] API Scan failed:', error);
             return { error: "API_SCAN_FAILED", details: error.message, results: [] };
         }
     } else {
-        // DOM Scan Strategy
-        let pagesScanned = 0;
-        const effectiveMaxPages = accessConfig.canDeepScan ? maxPages : 1;
-        
-        console.log('[Inbox Cleaner] Starting DOM Scan...');
-    
-        while (pagesScanned < effectiveMaxPages) {
-            console.log(`[Inbox Cleaner] Scanning page ${pagesScanned + 1}...`);
-    
-            const rows = Array.from(document.querySelectorAll(adapter.selectors.row));
-            const pageResults = adapter.processRows(rows);
-            allFindings = mergeResults(allFindings, pageResults);
-    
-            pagesScanned++;
-    
-            // Quick Scan Limit: Stop after 1 page
-            if (mode === 'quick' && pagesScanned >= 1) {
-                break;
-            }
-    
-            if (pagesScanned < effectiveMaxPages) {
-                const olderButton = document.querySelector(adapter.selectors.olderButton);
-                if (olderButton && olderButton.getAttribute('aria-disabled') !== 'true') {
-                    console.log("[Inbox Cleaner] Navigating to older emails...");
-                    olderButton.click();
-                    await sleep(2000); 
-                } else {
-                    console.log("[Inbox Cleaner] No more pages or 'Older' button disabled.");
-                    break;
+        // Non-Gmail strategies (Outlook etc)
+        if (adapter === OutlookAdapter) {
+             // Restore DOM loop for Outlook
+             let pagesScanned = 0;
+             const effectiveMaxPages = accessConfig.canDeepScan ? maxPages : 1;
+             
+             while (pagesScanned < effectiveMaxPages) {
+                const rows = Array.from(document.querySelectorAll(adapter.selectors.row));
+                const pageResults = adapter.processRows(rows);
+                allFindings = mergeResults(allFindings, pageResults);
+                pagesScanned++;
+                if (mode === 'quick') break;
+                
+                if (pagesScanned < effectiveMaxPages) {
+                    const olderButton = document.querySelector(adapter.selectors.olderButton);
+                    if (olderButton && olderButton.getAttribute('aria-disabled') !== 'true') {
+                        olderButton.click();
+                        await sleep(2000); 
+                    } else {
+                        break;
+                    }
                 }
-            }
+             }
+             totalFound = allFindings.length;
+             
+             return {
+                results: groupItems(allFindings),
+                totalFound,
+                unlockLimit: accessConfig.unlockLimit,
+                isLimited: !accessConfig.isPremium && totalFound > accessConfig.unlockLimit,
+                estimatedHidden: 0
+            };
         }
-        totalFound = allFindings.length; // Note: DOM adapter counts groups, not total emails? No, processRows returns groups.
-        // Wait, totalFound in original code was allFindings.length (number of groups).
-        // But for API, I calculated total emails?
-        // Let's keep consistency. totalFound should be number of GROUPS or EMAILS?
-        // The original code: const totalFound = allFindings.length;
-        // So it's number of Senders (groups).
-        totalFound = allFindings.length;
     }
 
-    // Calculate Estimation for Upsell
-    let estimatedHidden = 0;
-    if (mode === 'quick' && !useApi && adapter.getTotalCount) {
-        const totalEmails = adapter.getTotalCount(); 
-        const scannedEmails = 50; 
-        if (totalEmails > scannedEmails) {
-            const density = totalFound / scannedEmails; 
-            estimatedHidden = Math.round((totalEmails - scannedEmails) * density);
-        }
-    } else if (useApi && mode === 'quick') {
-        // For API quick scan, we can estimate based on total messages in inbox if we fetched that info
-        // For now, leave as 0 or implement a separate count fetch
-    }
-
-    // Group results if they aren't already grouped (DOM adapter returns flat list)
-    // API adapter already returns grouped results, but running it again is harmless/idempotent if handled right.
-    // Actually, API adapter returns groups. DOM returns senders.
-    // Let's check if we need to group.
-    
-    let finalResults = allFindings;
-    if (!useApi) {
-        // DOM results are flat senders, need grouping
-        finalResults = groupItems(allFindings);
-    }
-
-    return {
-        results: finalResults,
-        totalFound: totalFound,
-        unlockLimit: accessConfig.unlockLimit,
-        isLimited: !accessConfig.isPremium && totalFound > accessConfig.unlockLimit,
-        estimatedHidden: estimatedHidden
-    };
+    return { results: [], totalFound: 0 };
 };
 
 function mergeResults(existing, newResults) {
-    // Helper to merge two result arrays by sender/email
     const map = new Map();
-
     [...existing, ...newResults].forEach(item => {
         const key = item.email && item.email !== "unknown@email.com" ? item.email : item.senderName;
         if (!map.has(key)) {
@@ -150,8 +120,5 @@ function mergeResults(existing, newResults) {
             entry.ids = [...entry.ids, ...item.ids];
         }
     });
-
-    return Array.from(map.values())
-        .sort((a, b) => b.score - a.score)
-        .sort((a, b) => b.count - a.count);
+    return Array.from(map.values()).sort((a, b) => b.score - a.score);
 }
