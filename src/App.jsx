@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Trash2, RefreshCw, ShieldAlert, Moon, Sun, Info, Crown, Check, Lock, User, Settings, LogOut, Mail, Zap, Globe, CreditCard, AlertCircle, ChevronDown, ChevronRight, Eye, EyeOff, RotateCcw, HelpCircle, Bug, Send, MoreHorizontal, Clock, ShieldCheck, Archive, ChevronUp, Minus } from 'lucide-react';
+import { X, Trash2, RefreshCw, ShieldAlert, Moon, Sun, Info, Crown, Check, Lock, User, Settings, LogOut, Mail, Zap, CreditCard, AlertCircle, ChevronDown, ChevronRight, Eye, EyeOff, RotateCcw, HelpCircle, Bug, Send, MoreHorizontal, Clock, ShieldCheck, Archive, ChevronUp, Minus } from 'lucide-react';
 import Tippy from '@tippyjs/react';
-import Draggable from 'react-draggable';
 import Lottie from 'lottie-react';
 import { scanInbox } from './utils/scanner';
 import { GmailService } from './utils/gmail-service';
+import { GmailAdapter } from './utils/adapters/gmail';
 import { groupItems } from './utils/grouping';
 import { getToken } from './utils/oauth';
 import { ConfirmationModal } from './components/ConfirmationModal';
@@ -16,6 +16,7 @@ import sadData from './assets/sad.json';
 import UnsubscribeOverlay from './components/UnsubscribeOverlay';
 import OnboardingFlow from './components/OnboardingFlow';
 import HelpView from './components/HelpView';
+import DebugConsole from './components/DebugConsole';
 import { supabase } from './lib/supabase';
 import { isProviderConnected, disconnectProvider, authenticateProvider, getConnectedProviders } from './utils/oauth';
 import { unsubscribeFromSender } from './utils/unsubscribe';
@@ -871,7 +872,7 @@ const APIProviderToggle = ({ provider, label, isPremium, addToast }) => {
     );
 };
 
-const SettingsView = ({ onClose, lang, setLang, t, setView, onDeleteSuccess, addToast }) => {
+const SettingsView = ({ onClose, t, setView, onDeleteSuccess, addToast }) => {
     const { user, isPremium, refreshProfile } = useAuth();
 
     // Persist enabled providers
@@ -891,13 +892,6 @@ const SettingsView = ({ onClose, lang, setLang, t, setView, onDeleteSuccess, add
         localStorage.setItem('inbox-cleaner-providers', JSON.stringify(newState));
     };
 
-    const languages = [
-        { code: 'en', flag: '🇺🇸', name: 'English' },
-        { code: 'es', flag: '🇪🇸', name: 'Español' },
-        { code: 'hu', flag: '🇭🇺', name: 'Magyar' },
-        { code: 'ja', flag: '🇯🇵', name: '日本語' },
-        { code: 'zh', flag: '🇨🇳', name: '中文' }
-    ];
 
     return (
         <div className="bg-white dark:bg-zinc-950 flex flex-col p-6 animate-in slide-in-from-right duration-300 overflow-y-auto min-h-[400px]">
@@ -929,24 +923,6 @@ const SettingsView = ({ onClose, lang, setLang, t, setView, onDeleteSuccess, add
                     </button>
                 </div>
 
-                {/* Language Dropdown */}
-                <div>
-                    <h3 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-2 ml-1 text-zinc-900 dark:text-white">{t.language}</h3>
-                    <div className="relative">
-                        <select
-                            value={lang}
-                            onChange={(e) => setLang(e.target.value)}
-                            className="w-full p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 appearance-none cursor-pointer hover:border-emerald-500 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-zinc-900 dark:text-white"
-                        >
-                            {languages.map(l => (
-                                <option key={l.code} value={l.code}>{l.flag} {l.name}</option>
-                            ))}
-                        </select>
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-50 text-zinc-900 dark:text-white">
-                            <ChevronDown size={16} />
-                        </div>
-                    </div>
-                </div>
 
                 {/* API Provider Connections */}
                 <div>
@@ -1129,7 +1105,6 @@ const App = () => {
     const [scanMode, setScanMode] = useState('quick');
     const [view, setView] = useState('home'); // 'home', 'settings', 'subscription', 'help'
     const [showProfileMenu, setShowProfileMenu] = useState(false);
-    const [lang, setLang] = useState(() => localStorage.getItem('inbox-cleaner-lang') || 'en');
     const [toast, setToast] = useState(null);
     const [showWelcome, setShowWelcome] = useState(false);
     const [showGoodbye, setShowGoodbye] = useState(false);
@@ -1149,10 +1124,18 @@ const App = () => {
     // Bulk Selection State for Scan Results
     const [selectedScanItems, setSelectedScanItems] = useState(new Set());
 
+    // Missing State Definitions (Hotfix)
+    const [manualUnsubscribes, setManualUnsubscribes] = useState([]);
+    const [cleanableResults, setCleanableResults] = useState([]);
+    const [manualReviewResults, setManualReviewResults] = useState([]);
+    const [isDeepScanning, setIsDeepScanning] = useState(false);
+    const [scanProgress, setScanProgress] = useState(0);
+    const [activeTab, setActiveTab] = useState('cleanable'); // 'cleanable' | 'manual'
+
     const appRef = useRef(null);
     const { user, isPremium, logout, upgradeToPremium, checkPremiumStatus, refreshProfile, addToHistory, addBatchToHistory, removeFromHistory, history, createPortalSession, cancelSubscription, resumeSubscription, markWelcomeAsSeen, markOnboardingAsSeen } = useAuth();
 
-    const t = translations[lang] || translations['en'];
+    const t = translations['en'];
 
     const [showResumeSuccess, setShowResumeSuccess] = useState(false);
 
@@ -1438,8 +1421,7 @@ const App = () => {
         manualUnsubscribes: []
     });
     
-    // Track manual unsubscribe actions separately for modal control
-    const [manualUnsubscribes, setManualUnsubscribes] = useState([]);
+
 
     const scanRef = useRef({ isScanning: false, lastRun: 0 });
 
@@ -1512,7 +1494,12 @@ const App = () => {
                         // Show success feedback
                         addToast(`Unsubscribed from ${sender.senderName}`, 'success');
                     } else if (result.status === 'manual' || result.status === 'website_fallback') {
-                        successCount++;
+                        successCount++; // Still count as a "success" for the user, as action is identified
+                        // Add to manual unsubscribes list for the overlay
+                        setManualUnsubscribes(prev => [...prev, { ...sender, ...result }]);
+                        // Ensure overlay is visible so user can see the manual action
+                        setUnsubscribeStats(prev => ({ ...prev, isVisible: true }));
+                        
                         const manualItem = {
                             name: sender.senderName,
                             email: sender.email,
@@ -1528,8 +1515,9 @@ const App = () => {
                                         return;
                                     }
                                     
-                                    await GmailService.trashMessages(token.access_token, item.ids);
-                                    addToast(`Moved ${item.name} to trash`, 'success');
+                                    // Use new method from GmailAdapter as requested
+                                    await GmailAdapter.trashSenderThreads(token.access_token, item);
+                                    addToast(`Moved emails from ${item.name} to Trash`, 'success');
                                     
                                     // Remove from manual list
                                     setManualUnsubscribes(prev => prev.filter(i => i.email !== item.email));
@@ -1818,7 +1806,6 @@ const App = () => {
     if (!isVisible) return null;
 
     return (
-        <Draggable handle=".drag-handle">
             <div
                 ref={appRef}
                 className={`fixed top-4 right-4 w-80 rounded-2xl shadow-2xl border font-sans transition-all duration-300 ${darkMode ? 'bg-zinc-950 border-zinc-800 text-zinc-100' : 'bg-[#f8f9fa] border-gray-200 text-gray-800'} ${heightClass} ${showProfileMenu ? 'overflow-visible' : 'overflow-hidden'}`}
@@ -1911,7 +1898,7 @@ const App = () => {
 
                 {view === 'settings' && (
                     <div className="relative z-[60]">
-                        <SettingsView onClose={() => setView('home')} lang={lang} setLang={setLang} t={t} setView={setView} onDeleteSuccess={handleDeleteSuccess} addToast={addToast} />
+                        <SettingsView onClose={() => setView('home')} t={t} setView={setView} onDeleteSuccess={handleDeleteSuccess} addToast={addToast} />
                     </div>
                 )}
 
@@ -2372,8 +2359,8 @@ const App = () => {
                         </div>
                     </div>
                 )}
-            </div>
-        </Draggable>
+            <DebugConsole />
+        </div>
     );
 };
 

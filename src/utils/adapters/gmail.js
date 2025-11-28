@@ -34,7 +34,8 @@ export const GmailAdapter = {
             for (let page = 0; page < maxPages; page++) {
                 // 1. List Messages (Ids only)
                 // Query: look for promotions or newsletters to narrow down
-                const query = 'category:promotions OR label:smartlabel_newsletter OR unsubscribe OR "opt out"';
+                // UPGRADE: Use Smart Labels for better accuracy
+                const query = 'label:^smartlabel_newsletter OR category:promotions';
                 
                 let listUrl = `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=${BATCH_SIZE}`;
                 if (pageToken) {
@@ -188,19 +189,50 @@ export const GmailAdapter = {
                 listUnsubscribe
             };
 
-            // Logic Rule 1: Cleanable if List-Unsubscribe exists
+            // Strategy A: The "Gold Standard" (One-Click)
             if (listUnsubscribe) {
                 cleanable.push(item);
+                continue;
             } 
-            // Logic Rule 2: Manual if no header
-            else {
-                // Filter out purely transactional stuff if possible
-                // For MVP, add ALL non-cleanable to manual
-                // But filter out known system notifications if needed (omitted for now as per instruction "add ALL non-cleanable to manual")
+
+            // Strategy B: The "Silver Standard" (Manual Review)
+            // It's in the newsletter folder but lacks headers.
+            // We check snippet for keywords just to be safe.
+            const snippet = msg.snippet?.toLowerCase() || "";
+            const isMarketing = snippet.match(/unsubscribe|opt-out|view in browser/);
+
+            if (isMarketing) {
                 manual.push(item);
             }
+            // Items that are NOT marketing (e.g. receipts) are dropped here to reduce noise.
         }
 
         return { cleanable, manual };
+    },
+
+    /**
+     * Trash all threads for a given sender
+     * @param {string} token - Access Token
+     * @param {Object} sender - Sender object with ids
+     */
+    async trashSenderThreads(token, sender) {
+        if (!sender.ids || sender.ids.length === 0) return;
+        
+        const response = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/batchModify', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                ids: sender.ids,
+                addLabelIds: ['TRASH'],
+                removeLabelIds: []
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to trash threads: ${response.statusText}`);
+        }
     }
 };
